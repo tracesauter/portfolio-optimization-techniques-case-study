@@ -1,0 +1,83 @@
+[project]
+name = "asset-class-returns"
+version = "0.1.0"
+description = "Research environment for asset-class return modeling and uncertainty-aware forecasting"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    # Core scientific / tabular
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "plotly",
+    "tqdm",
+    "joblib",
+    "numba",
+    "statsmodels",
+    "scikit-learn",
+
+    # Optimization
+    "cvxpy",
+    "pulp",
+    "highspy",
+    "pyomo",
+
+    # Practical tabular ML / probabilistic ML
+    "xgboost",
+    "xgboostlss",
+    "lightgbm",
+    "catboost",
+    "ngboost",
+    "crepes",
+    "netcal",
+    "uncertainty-toolbox",
+    "skpro",
+]
+
+[project.optional-dependencies]
+moreprobabilistic = [
+    "mapie",
+    "puncc",
+]
+
+torch = [
+    "torch",
+    "gpytorch",
+    "laplace-torch",
+    "torch-uncertainty",
+]
+
+jax = [
+    "jax",
+    "jaxopt",
+    "flax",
+    "jaxtyping",
+    "numpyro",
+]
+
+tensorflow = [
+    "tensorflow",
+    "tensorflow-probability",
+]
+
+bayes = [
+    "pymc",
+    "bambi",
+]
+
+timeseries = [
+    "gluonts",
+    "darts",
+]
+
+viz = [
+    "seaborn",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "ipykernel",
+    "jupyterlab",
+]
