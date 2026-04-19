@@ -16,13 +16,11 @@ dependencies = [
     "numba",
     "statsmodels",
     "scikit-learn",
-
     # Optimization
     "cvxpy",
     "pulp",
     "highspy",
     "pyomo",
-
     # Practical tabular ML / probabilistic ML
     "xgboost",
     "xgboostlss",
@@ -33,6 +31,7 @@ dependencies = [
     "netcal",
     "uncertainty-toolbox",
     "skpro",
+    "pyscipopt>=6.1.0",
 ]
 
 [project.optional-dependencies]
