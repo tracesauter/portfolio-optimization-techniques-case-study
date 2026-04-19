@@ -10,3 +10,16 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Generated research artifacts
+outputs/
+
+# Codex-generated files
+.codex
+
+# Claude Code-generated files
+.claude_code
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
