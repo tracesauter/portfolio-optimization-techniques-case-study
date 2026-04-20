@@ -53,8 +53,8 @@ def solve_min_variance(
     inflation_index: int = 7,
     alt_indices: Sequence[int] = (5, 6),
     alt_grid_step: float = 0.025,
-    alt_grid_max_units: int = 3,           # yields {0, .025, .05, .075}
-    regular_grid_step: float = 0.01,       # yields {0, .01, ..., 1.00}
+    alt_grid_max_units: int = 3,  # yields {0, .025, .05, .075}
+    regular_grid_step: float = 0.01,  # yields {0, .01, ..., 1.00}
     max_holdings: int = 6,
     solver: str | None = cp.SCIP,
     solver_kwargs: dict | None = None,
@@ -74,7 +74,7 @@ def solve_min_variance(
     n_reg = cp.Variable(len(regular_indices), integer=True, name="units_regular")
     n_alt = cp.Variable(len(alt_indices), integer=True, name="units_alt")
 
-    max_reg_units: int = int(round(1.0 / regular_grid_step))    # 100
+    max_reg_units: int = int(round(1.0 / regular_grid_step))  # 100
     max_alt_weight: float = alt_grid_step * alt_grid_max_units  # 0.075
 
     constraints: list[cp.Constraint] = []
@@ -97,9 +97,9 @@ def solve_min_variance(
     # Selection indicators: z_i = 0  ⇒  w_i = 0.
     # Big-M tightened to each asset's weight upper bound.
     for i in regular_indices:
-        constraints.append(w[i] <= z[i])                       # U_i = 1
+        constraints.append(w[i] <= z[i])  # U_i = 1
     for i in alt_indices:
-        constraints.append(w[i] <= max_alt_weight * z[i])      # U_i = 0.075
+        constraints.append(w[i] <= max_alt_weight * z[i])  # U_i = 0.075
 
     # Cardinality.
     constraints.append(cp.sum(z) <= max_holdings)
@@ -174,18 +174,14 @@ def build_efficient_frontier(
     targets = np.round(
         np.arange(return_min, return_max + 0.5 * return_step, return_step), 6
     )
-    return [
-        solve_min_variance(mu, sigma, float(r), **solver_kwargs) for r in targets
-    ]
+    return [solve_min_variance(mu, sigma, float(r), **solver_kwargs) for r in targets]
 
 
 if __name__ == "__main__":
     # Illustrative example — replace mu / sigma with your estimates.
     rng = np.random.default_rng(0)
     k = 8
-    mu_example: FloatArray = np.array(
-        [0.08, 0.10, 0.06, 0.12, 0.09, 0.14, 0.11, 0.03]
-    )
+    mu_example: FloatArray = np.array([0.08, 0.10, 0.06, 0.12, 0.09, 0.14, 0.11, 0.03])
     rnd = rng.standard_normal((k, k))
     sigma_example: FloatArray = rnd @ rnd.T / k + np.diag([0.04] * k)
 

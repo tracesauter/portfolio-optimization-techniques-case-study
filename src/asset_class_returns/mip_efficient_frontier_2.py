@@ -126,10 +126,14 @@ def build_portfolio_miqp(
 
     # Integer unit variables
     # Standard assets: whole percentages -> 0.01 * unit, unit in {0, ..., 100}
-    standard_units = cp.Variable(len(standard_indices), integer=True, name="standard_units")
+    standard_units = cp.Variable(
+        len(standard_indices), integer=True, name="standard_units"
+    )
 
     # Special assets: 2.5% increments -> 0.025 * unit, unit in {0, 1, 2, 3}
-    special_units = cp.Variable(len(special_indices), integer=True, name="special_units")
+    special_units = cp.Variable(
+        len(special_indices), integer=True, name="special_units"
+    )
 
     target_return = cp.Parameter(name="target_return")
 
@@ -137,7 +141,7 @@ def build_portfolio_miqp(
         cp.sum(w) <= 1.0,
         mu @ w >= target_return,
         cp.sum(z) <= max_nonzero_assets,
-        cp.sum(z) >= 1,            # avoids the all-zero portfolio
+        cp.sum(z) >= 1,  # avoids the all-zero portfolio
         w[inflation_index] == 0.0,
         z[inflation_index] == 0.0,
     ]
@@ -195,8 +199,12 @@ def reconstruct_weights(
 
     weights = np.zeros(n_assets, dtype=float)
 
-    standard_units = np.rint(np.asarray(model.standard_units.value).reshape(-1)).astype(int)
-    special_units = np.rint(np.asarray(model.special_units.value).reshape(-1)).astype(int)
+    standard_units = np.rint(np.asarray(model.standard_units.value).reshape(-1)).astype(
+        int
+    )
+    special_units = np.rint(np.asarray(model.special_units.value).reshape(-1)).astype(
+        int
+    )
 
     for asset_idx, units in zip(model.standard_indices, standard_units):
         weights[asset_idx] = 0.01 * units

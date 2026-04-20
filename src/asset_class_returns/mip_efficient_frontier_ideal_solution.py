@@ -252,8 +252,7 @@ def solve_efficient_frontier(
     """Solve the minimum-variance portfolio for each target return."""
     if solver != "SCIP":
         raise ValueError(
-            "This module is written for the SCIP MIQP path only. "
-            "Use solver='SCIP'."
+            "This module is written for the SCIP MIQP path only. Use solver='SCIP'."
         )
 
     installed_solvers = set(cp.installed_solvers())

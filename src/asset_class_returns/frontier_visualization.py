@@ -4,27 +4,31 @@ import os
 from datetime import datetime
 from pathlib import Path
 from statistics import mean
+from typing import Sequence
 
-_MPLCONFIGDIR = Path(os.environ.get("MPLCONFIGDIR", "/tmp/asset_class_returns_mplconfig"))
-_MPLCONFIGDIR.mkdir(parents=True, exist_ok=True)
-os.environ.setdefault("MPLCONFIGDIR", str(_MPLCONFIGDIR))
-
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 import numpy as np
 import plotly.graph_objects as go
 import seaborn as sns
 
 from .convex_continuous_efficient_frontier import FrontierPoint, FrontierRun
 
+_MPLCONFIGDIR = Path(
+    os.environ.get("MPLCONFIGDIR", "/tmp/asset_class_returns_mplconfig")
+)
+_MPLCONFIGDIR.mkdir(parents=True, exist_ok=True)
+os.environ.setdefault("MPLCONFIGDIR", str(_MPLCONFIGDIR))
+
+import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.ticker as mtick  # noqa: E402
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "outputs" / "continuous_frontier_runs"
 PLOT_TITLE = "Continuous Convex Efficient Frontier"
 PLOT_SUBTITLE = (
-    "Long-only, cash allowed, inflation excluded, "
-    "real estate and gold capped at 7.5%"
+    "Long-only, cash allowed, inflation excluded, real estate and gold capped at 7.5%"
 )
+COMPARISON_PLOT_TITLE = "Efficient Frontier Comparison"
 
 
 def create_run_output_dir(base_dir: Path | None = None) -> Path:
@@ -45,59 +49,60 @@ def create_run_output_dir(base_dir: Path | None = None) -> Path:
 
 def build_frontier_summary_text(run: FrontierRun, output_dir: Path) -> str:
     """Build a compact human-readable summary for the run."""
-    solved_points = _solved_points(run)
-    solved_count = len(solved_points)
-    total_count = len(run.points)
-
-    lines = [
-        PLOT_TITLE,
-        f"Solver: {run.solver}",
-        f"Solved targets: {solved_count}/{total_count}",
-        f"Total solve time (s): {run.total_solve_time_seconds:.6f}",
-    ]
-
-    if solved_points:
-        average_solve_time_ms = 1000.0 * mean(
-            point.solve_time_seconds for point in solved_points
-        )
-        first_point = solved_points[0]
-        last_point = solved_points[-1]
-        volatility_min = min(point.volatility for point in solved_points)
-        volatility_max = max(point.volatility for point in solved_points)
-        achieved_min = min(point.achieved_return for point in solved_points)
-        achieved_max = max(point.achieved_return for point in solved_points)
-
-        lines.extend(
-            [
-                f"Average solve time per target (ms): {average_solve_time_ms:.3f}",
-                f"Volatility range: {_format_pct(volatility_min)} to {_format_pct(volatility_max)}",
-                f"Achieved return range: {_format_pct(achieved_min)} to {_format_pct(achieved_max)}",
-                "",
-                "First frontier point:",
-                _format_point_summary(first_point),
-                "Last frontier point:",
-                _format_point_summary(last_point),
-            ]
-        )
-    else:
-        lines.extend(
-            [
-                "",
-                "No frontier points were solved successfully, so plots may be unavailable.",
-            ]
-        )
-
-    lines.extend(
-        [
-            "",
-            "Artifacts:",
-            f"  Output directory: {output_dir}",
-            f"  Summary: {output_dir / 'frontier_summary.txt'}",
-            f"  Full CSV: {output_dir / 'frontier_full.csv'}",
-            f"  Static plot: {output_dir / 'efficient_frontier.png'}",
-            f"  Interactive plot: {output_dir / 'efficient_frontier.html'}",
-        ]
+    return build_multi_frontier_summary_text(
+        sections=[(PLOT_TITLE, run, None)],
+        output_dir=output_dir,
+        artifacts=[
+            ("Output directory", output_dir),
+            ("Summary", output_dir / "frontier_summary.txt"),
+            ("Full CSV", output_dir / "frontier_full.csv"),
+            ("Static plot", output_dir / "efficient_frontier.png"),
+            ("Interactive plot", output_dir / "efficient_frontier.html"),
+        ],
     )
+
+
+def build_multi_frontier_summary_text(
+    sections: Sequence[tuple[str, FrontierRun | None, str | None]],
+    output_dir: Path,
+    artifacts: Sequence[tuple[str, Path]] | None = None,
+) -> str:
+    """Build a compact human-readable summary for one or more frontier runs."""
+    lines = [COMPARISON_PLOT_TITLE]
+
+    for section_index, (label, run, error_message) in enumerate(sections):
+        lines.extend(
+            [
+                "",
+                "==========================",
+                f"Method: {label}",
+                "==========================",
+            ]
+        )
+
+        if run is None:
+            lines.append("No optimization run was produced.")
+            if error_message:
+                lines.append(f"Error: {error_message}")
+        else:
+            lines.extend(_build_run_section_lines(run))
+            if error_message:
+                lines.append(f"Note: {error_message}")
+
+        if section_index == len(sections) - 1:
+            lines.append("")
+
+    artifact_items = (
+        [
+            ("Output directory", output_dir),
+            ("Summary", output_dir / "frontier_summary.txt"),
+        ]
+        if artifacts is None
+        else list(artifacts)
+    )
+    lines.append("Artifacts:")
+    for artifact_label, artifact_path in artifact_items:
+        lines.append(f"  {artifact_label}: {artifact_path}")
 
     return "\n".join(lines)
 
@@ -109,7 +114,13 @@ def save_frontier_summary(summary_text: str, output_dir: Path) -> Path:
     return summary_path
 
 
-def plot_frontier_static(run: FrontierRun, output_path: Path) -> Path:
+def plot_frontier_static(
+    run: FrontierRun,
+    output_path: Path,
+    title: str = PLOT_TITLE,
+    subtitle: str = PLOT_SUBTITLE,
+    method_label: str | None = None,
+) -> Path:
     """Save a static Matplotlib/Seaborn frontier chart."""
     solved_points = _solved_points(run)
     if not solved_points:
@@ -186,7 +197,7 @@ def plot_frontier_static(run: FrontierRun, output_path: Path) -> Path:
     ax.margins(x=0.06, y=0.08)
 
     fig.suptitle(
-        PLOT_TITLE,
+        title,
         x=0.125,
         y=0.97,
         ha="left",
@@ -196,14 +207,15 @@ def plot_frontier_static(run: FrontierRun, output_path: Path) -> Path:
     fig.text(
         0.125,
         0.925,
-        PLOT_SUBTITLE,
+        subtitle,
         ha="left",
         fontsize=11,
         color="#4f4f4f",
     )
 
+    method_text = "" if method_label is None else f"Method: {method_label}\n"
     annotation_text = (
-        f"Solver: {run.solver}\n"
+        f"{method_text}Solver: {run.solver}\n"
         f"Solved targets: {len(solved_points)}/{len(run.points)}\n"
         f"Total runtime: {run.total_solve_time_seconds:.3f}s"
     )
@@ -252,7 +264,9 @@ def plot_frontier_interactive(run: FrontierRun, output_path: Path) -> Path:
             np.array([point.invested_weight for point in solved_points], dtype=float),
             np.array([point.holdings_count for point in solved_points], dtype=float),
             1000.0
-            * np.array([point.solve_time_seconds for point in solved_points], dtype=float),
+            * np.array(
+                [point.solve_time_seconds for point in solved_points], dtype=float
+            ),
         ]
     )
 
@@ -354,6 +368,111 @@ def plot_frontier_interactive(run: FrontierRun, output_path: Path) -> Path:
     return output_path
 
 
+def plot_frontier_interactive_comparison(
+    runs: Sequence[tuple[str, FrontierRun]],
+    output_path: Path,
+) -> Path:
+    """Save one interactive Plotly chart containing multiple frontier traces."""
+    color_cycle = ["#1f4e79", "#b03a2e", "#2e8b57", "#8e44ad", "#c97900"]
+    figure = go.Figure()
+    plotted_count = 0
+    method_summaries: list[str] = []
+
+    for index, (label, run) in enumerate(runs):
+        solved_points = _solved_points(run)
+        if not solved_points:
+            continue
+
+        plotted_count += 1
+        color = color_cycle[index % len(color_cycle)]
+        volatility = np.array(
+            [point.volatility for point in solved_points], dtype=float
+        )
+        achieved_return = np.array(
+            [point.achieved_return for point in solved_points],
+            dtype=float,
+        )
+        customdata = np.column_stack(
+            [
+                np.array([point.target_return for point in solved_points], dtype=float),
+                np.array(
+                    [point.invested_weight for point in solved_points], dtype=float
+                ),
+                np.array(
+                    [point.holdings_count for point in solved_points], dtype=float
+                ),
+                1000.0
+                * np.array(
+                    [point.solve_time_seconds for point in solved_points],
+                    dtype=float,
+                ),
+            ]
+        )
+
+        figure.add_trace(
+            go.Scatter(
+                x=volatility,
+                y=achieved_return,
+                mode="lines+markers",
+                name=f"{label} frontier",
+                customdata=customdata,
+                line={"color": color, "width": 3},
+                marker={
+                    "size": 8,
+                    "color": color,
+                    "line": {"color": "white", "width": 1},
+                },
+                hovertemplate=(
+                    "Method: "
+                    + label
+                    + "<br>"
+                    + "Volatility: %{x:.2%}<br>"
+                    + "Achieved return: %{y:.2%}<br>"
+                    + "Target return: %{customdata[0]:.2%}<br>"
+                    + "Invested weight: %{customdata[1]:.2%}<br>"
+                    + "Holdings count: %{customdata[2]:.0f}<br>"
+                    + "Solve time: %{customdata[3]:.3f} ms"
+                    + "<extra></extra>"
+                ),
+            )
+        )
+
+        method_summaries.append(
+            f"{label} ({len(solved_points)}/{len(run.points)} targets)"
+        )
+
+    if plotted_count == 0:
+        raise ValueError("No solved frontier points are available to plot.")
+
+    figure.update_layout(
+        template="plotly_white",
+        width=980,
+        height=620,
+        hovermode="closest",
+        title={
+            "text": (
+                f"{COMPARISON_PLOT_TITLE}<br><sup>{' | '.join(method_summaries)}</sup>"
+            ),
+            "x": 0.01,
+            "xanchor": "left",
+        },
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1.0,
+        },
+        margin={"l": 70, "r": 30, "t": 110, "b": 70},
+    )
+    figure.update_xaxes(title="Volatility (standard deviation)", tickformat=".1%")
+    figure.update_yaxes(title="Expected return", tickformat=".1%")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.write_html(output_path, include_plotlyjs="cdn", full_html=True)
+    return output_path
+
+
 def _solved_points(run: FrontierRun) -> list[FrontierPoint]:
     return [
         point
@@ -364,6 +483,51 @@ def _solved_points(run: FrontierRun) -> list[FrontierPoint]:
         and point.invested_weight is not None
         and point.holdings_count is not None
     ]
+
+
+def _build_run_section_lines(run: FrontierRun) -> list[str]:
+    solved_points = _solved_points(run)
+    solved_count = len(solved_points)
+    total_count = len(run.points)
+
+    lines = [
+        f"Solver: {run.solver}",
+        f"Solved targets: {solved_count}/{total_count}",
+        f"Total solve time (s): {run.total_solve_time_seconds:.6f}",
+    ]
+
+    if solved_points:
+        average_solve_time_ms = 1000.0 * mean(
+            point.solve_time_seconds for point in solved_points
+        )
+        first_point = solved_points[0]
+        last_point = solved_points[-1]
+        volatility_min = min(point.volatility for point in solved_points)
+        volatility_max = max(point.volatility for point in solved_points)
+        achieved_min = min(point.achieved_return for point in solved_points)
+        achieved_max = max(point.achieved_return for point in solved_points)
+
+        lines.extend(
+            [
+                f"Average solve time per target (ms): {average_solve_time_ms:.3f}",
+                f"Volatility range: {_format_pct(volatility_min)} to {_format_pct(volatility_max)}",
+                f"Achieved return range: {_format_pct(achieved_min)} to {_format_pct(achieved_max)}",
+                "",
+                "First frontier point:",
+                _format_point_summary(first_point),
+                "Last frontier point:",
+                _format_point_summary(last_point),
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "",
+                "No frontier points were solved successfully, so plots may be unavailable.",
+            ]
+        )
+
+    return lines
 
 
 def _format_pct(value: float) -> str:

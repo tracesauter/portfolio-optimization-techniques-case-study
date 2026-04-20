@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from time import perf_counter
-from typing import Iterable, Sequence, TypeAlias, Tuple
+from typing import Sequence, TypeAlias, Tuple
 
 import cvxpy as cp
 import numpy as np
@@ -178,13 +177,9 @@ def build_portfolio_qp(
     )
 
 
-def find_basis_for_0_return_space(
-    expected_returns: Array1D
-) -> Tuple[Array2D, Array2D]:
+def find_basis_for_0_return_space(expected_returns: Array1D) -> Tuple[Array2D, Array2D]:
     num_asset_classes = expected_returns.shape[0]
-    constraints = np.vstack(
-        [expected_returns, np.ones(num_asset_classes)]
-    )
+    constraints = np.vstack([expected_returns, np.ones(num_asset_classes)])
     V = np.linalg.svd(constraints).T
     num_vectors_in_basis = V.shape[1] - 2
     basis = V[:, -num_vectors_in_basis:]
@@ -192,11 +187,11 @@ def find_basis_for_0_return_space(
     return basis, projection_matrix_onto_basis
 
 
-def sample_random_long_only(
-    n_asset_classes: int,
-    n_samples: int
-) -> Array2D:
-    dirichlet_samples_including_cash = np.random.dirichlet(np.ones(n_asset_classes + 1,), n_samples)
+def sample_random_long_only(n_asset_classes: int, n_samples: int) -> Array2D:
+    dirichlet_samples_including_cash = np.random.dirichlet(
+        np.ones(
+            n_asset_classes + 1,
+        ),
+        n_samples,
+    )
     return dirichlet_samples_including_cash[:, :-1]
-
-

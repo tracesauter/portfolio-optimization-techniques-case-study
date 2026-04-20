@@ -100,7 +100,7 @@ def exponential_decay_weights(
         raise ValueError("decay must be in (0, 1].")
 
     exponents = np.arange(num_observations - 1, -1, -1, dtype=np.float64)
-    raw = decay ** exponents
+    raw = decay**exponents
     return raw / raw.sum()
 
 
@@ -116,7 +116,9 @@ def normalize_observation_weights(
     if observation_weights is None:
         return np.full(num_observations, 1.0 / num_observations, dtype=np.float64)
 
-    weights = _as_float_1d_array(observation_weights, num_observations, "observation_weights")
+    weights = _as_float_1d_array(
+        observation_weights, num_observations, "observation_weights"
+    )
     if np.any(weights < 0.0):
         raise ValueError("observation_weights must be nonnegative.")
     total = float(weights.sum())
@@ -149,7 +151,9 @@ def estimate_covariance_from_returns(
 
     correction = 1.0 - float(np.sum(weights**2))
     if correction <= 0.0:
-        raise ValueError("Degenerate weights: unable to compute unbiased weighted covariance.")
+        raise ValueError(
+            "Degenerate weights: unable to compute unbiased weighted covariance."
+        )
 
     cov = scatter / correction
     cov = _symmetrize(cov)
@@ -167,7 +171,9 @@ def covariance_to_correlation(covariance: npt.ArrayLike) -> tuple[Array2D, Array
 
     variances = np.diag(cov).copy()
     if np.any(variances <= 0.0):
-        raise ValueError("All variances must be strictly positive to form correlations.")
+        raise ValueError(
+            "All variances must be strictly positive to form correlations."
+        )
 
     std = np.sqrt(variances)
     denom = np.outer(std, std)
@@ -182,7 +188,9 @@ def covariance_to_correlation(covariance: npt.ArrayLike) -> tuple[Array2D, Array
     return corr, variances
 
 
-def correlation_to_covariance(correlation: npt.ArrayLike, variances: npt.ArrayLike) -> Array2D:
+def correlation_to_covariance(
+    correlation: npt.ArrayLike, variances: npt.ArrayLike
+) -> Array2D:
     """
     Build covariance = D * correlation * D, where D = diag(sqrt(variances)).
     """
